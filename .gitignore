@@ -1,0 +1,3 @@
+libscrypt/
+*.o
+linux_cli/cli
