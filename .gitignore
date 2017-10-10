@@ -1,3 +1,3 @@
-libscrypt/
+scrypt-jane/*
 *.o
 linux_cli/cli

@@ -9,7 +9,9 @@
 #include <cryptopp/gcm.h>
 #include <cryptopp/filters.h>
 
-#include "../libscrypt/libscrypt.h"
+extern "C" {
+#include "../scrypt-jane/scrypt-jane.h"
+}
 
 #define _UTIL_H
 
@@ -35,9 +37,7 @@ void sha256(const byte* buffer, size_t buffer_len, byte* output) {
 
 // Derives a key. Out buffer should be 64 bytes. Salt should be 16 bytes.
 void keydev(const byte* password, size_t password_len, const byte* salt, byte* outbuf) {
-	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256> pbkdf2;
-	pbkdf2.DeriveKey(outbuf, 32, 0, password, password_len, salt, 16, 8192);
-	libscrypt_scrypt(password, password_len, salt, 16, 8192, 8, 1, outbuf+32, 32);
+	scrypt(password, password_len, salt, 16, 13, 3, 0, outbuf, 64); // 13,3,0 are in powers of 2, with N being in N+1 to power of 2. 
 }
 
 // Randomizes byte array
