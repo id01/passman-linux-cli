@@ -1,6 +1,3 @@
 scrypt-jane/*
-cryptopp/*
 *.o
-*.dll
-*.exe
 linux_cli/cli

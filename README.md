@@ -5,6 +5,7 @@ C++ Windows GUI Interface Submodule
 This is a (no longer so) simple password manager that runs on mySQL.  
 This is the webextension submodule.  
 
+<<<<<<< HEAD
 ## Windows Interface Installation
 Building is split into 2 parts - MinGW for C++ building of Backend (not usable) and Visual C# for GUI wrapper.  
 #### Step 1: MinGW Building (Backend)
@@ -22,6 +23,11 @@ x86_64-w64-mingw32-gcc scrypt-jane.c -O3 -DSCRYPT_SALSA -DSCRYPT_SHA256 -c
 cd ../main
 x86_64-w64-mingw32-g++ -static -static-libgcc -static-libstdc++ main.cpp ../scrypt-jane/scrypt-jane.o -L../cryptopp -lcryptopp -O2 -shared -o main.dll  
 ```
+=======
+## C++ Interface Installation
+Download libscrypt from [here](https://github.com/technion/libscrypt) and build it.  
+Copy libscrypt.a and libscrypt.h to libscrypt.  
+>>>>>>> parent of 1aa6ea5... 	modified:   .gitignore
 Change the serverURL variable in main/config.h to your server URL.  
 Run linux_cli/build.sh.  
 #### Step 2: Visual C# Building (C# GUI)
@@ -33,8 +39,14 @@ Run
 
 ## Building Dependencies
 * CryptoPP  
+<<<<<<< HEAD
 * Scrypt-jane  
 * Visual Studio  
 
 ## Runtime Dependencies
 None
+=======
+* openssl  
+* libcurl  
+* lpthread  
+>>>>>>> parent of 1aa6ea5... 	modified:   .gitignore
