@@ -1,13 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <cryptopp/sha.h>
-#include <cryptopp/pwdbased.h>
-#include <cryptopp/salsa.h>
-#include <cryptopp/aes.h>
-#include <cryptopp/modes.h>
-#include <cryptopp/gcm.h>
-#include <cryptopp/filters.h>
+#include "../cryptopp/sha.h"
+#include "../cryptopp/pwdbased.h"
+#include "../cryptopp/salsa.h"
+#include "../cryptopp/aes.h"
+#include "../cryptopp/modes.h"
+#include "../cryptopp/gcm.h"
+#include "../cryptopp/filters.h"
+#include "../cryptopp/osrng.h"
 
 extern "C" {
 #include "../scrypt-jane/scrypt-jane.h"
@@ -16,6 +17,7 @@ extern "C" {
 #define _UTIL_H
 
 typedef unsigned char byte;
+CryptoPP::AutoSeededRandomPool URANDOM_osrng;
 
 // Wipes a pointer without freeing it
 void wipeNoFree(byte* buf, size_t buflen) {
@@ -42,9 +44,5 @@ void keydev(const byte* password, size_t password_len, const byte* salt, byte* o
 
 // Randomizes byte array
 void urandom(byte* buf, size_t buflen) {
-	FILE* devurandom = fopen("/dev/urandom", "r");
-	for (size_t i=0; i<buflen; i++) {
-		buf[i] = fgetc(devurandom);
-	}
-	fclose(devurandom);
+	URANDOM_osrng.GenerateBlock(buf, buflen);
 }

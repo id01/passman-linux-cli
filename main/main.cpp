@@ -10,19 +10,25 @@
 #include <algorithm>
 
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
-#include <cryptopp/md5.h>
-#include <cryptopp/hex.h>
-#include <cryptopp/base64.h>
-#include <cryptopp/filters.h>
+#include "../cryptopp/md5.h"
+#include "../cryptopp/hex.h"
+#include "../cryptopp/base64.h"
+#include "../cryptopp/filters.h"
 
 #include "config.h"
-#include "requester.h"
 #include "doubledecryption.h"
 #include "doubleencryption.h"
 #include "signature.h"
 
+#define EXPORT __declspec(dllexport) __stdcall
+
 byte* eccprivkey = NULL;
 size_t eccprivkey_len = 0;
+
+// ASM-laced prototypes to get rid of mangling
+EXPORT bool parseGetResultWrapper(const char* userhash, const char* httpresult, const char* pass, char* outputBuffer, const size_t outputBuffer_len) asm ("parseGetResultWrapper");
+EXPORT bool respondToAddWrapper(const char* userhash, const char* httpresult, const char* pass, const char* accountName, const int passLength, char* outputBuffer, const size_t outputBuffer_len) asm ("respondToAddWrapper");
+EXPORT bool md5hexWrapper(const char* plaintext, const size_t plaintext_len, char* outputBuffer, const size_t outputBuffer_len) asm ("md5hexWrapper");
 
 // Gets an MD5 hash in std::string hex format
 std::string md5hex(const char* plaintext, size_t plaintext_len) {
@@ -40,19 +46,6 @@ std::string md5hex(const char* plaintext, size_t plaintext_len) {
 	std::transform(hash.begin(), hash.end(), hash.begin(), ::tolower);
 	// Return
 	return hash;
-}
-
-// Parses arguments to generate first post
-std::string generateFirstPost(std::string userhash, std::string accountName) {
-	// Hash account
-	std::string accountHash = md5hex(accountName.c_str(), accountName.size());
-	// Get POST params
-	std::string toPost = "userhash=";
-	toPost += userhash;
-	toPost += "&account=";
-	toPost += accountHash;
-	// Return
-	return toPost;
 }
 
 // Parses GET result
@@ -90,10 +83,10 @@ std::string parseGetResult(std::string userhash, std::string httpresult, const c
 }
 
 // Responds to ADD result
-std::string respondToAdd(std::string userhash, std::string httpresult, const char* pass, const size_t pass_len, std::string accountName, std::string passLength) {
+std::string respondToAdd(std::string userhash, std::string httpresult, const char* pass, const size_t pass_len, std::string accountName, int passLength) {
 	std::string accountHash = md5hex(accountName.c_str(), accountName.size());
 	// Allocate variables
-	std::string challenge, eccprivkeyraw, status, eccprivkeyb64, eccprivkeyenc, toPost;
+	std::string challenge, eccprivkeyraw, status, eccprivkeyb64, eccprivkeyenc;
 	std::stringstream resultStream;
 	// Parse HTTP result
 	if (httpresult.find('\n') != -1) {
@@ -122,13 +115,13 @@ std::string respondToAdd(std::string userhash, std::string httpresult, const cha
 			}
 		}
 		// Generate a password of length passLength
-		int newPassword_len = atoi(passLength.c_str());
-		std::cout << passLength << '\n';
+		int newPassword_len = passLength;
 		if (newPassword_len == 0) {
 			throw std::string("Password length must be an integer\n");
 		}
 		const char* possiblechars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.!";
 		byte* newPasswordBytes = (byte*)malloc(newPassword_len);
+		urandom(newPasswordBytes, newPassword_len);
 		char* newPassword = (char*)malloc(newPassword_len);
 		for (int i=0; i<newPassword_len; i++) {
 			newPassword[i] = possiblechars[newPasswordBytes[i] >> 2];
@@ -156,26 +149,16 @@ std::string respondToAdd(std::string userhash, std::string httpresult, const cha
 					new CryptoPP::StringSink(signatureB64)
 				)
 			);
-			// Generate toPost
-			toPost = "userhash=";
-			toPost += userhash;
-			toPost += "&passwordcrypt=";
-			toPost += encryptedPasswordB64;
-			toPost += "&signature=";
-			toPost += signatureB64;
+			// Generate result
+			std::string result(encryptedPasswordB64); result += '$'; result += signatureB64;
 			// URL encode '+' and remove '\n'
 			pos = 0;
-			while ((pos = toPost.find('+', pos)) != std::string::npos) {
-				toPost.replace(pos, 1, "%2B");
-				pos += 3;
-			}
-			pos = 0;
-			while ((pos = toPost.find('\n', pos)) != std::string::npos) {
-				toPost.replace(pos, 1, "");
+			while ((pos = result.find('\n', pos)) != std::string::npos) {
+				result.replace(pos, 1, "");
 			}
 			// Cleanup and return
 			wipe((byte*)newPassword, newPassword_len); wipe(newPasswordBytes, newPassword_len); free(encryptedPassword);
-			return toPost;
+			return result;
 		} else {
 			resultStream << "Encryption error.\n";
 		}
@@ -185,67 +168,81 @@ std::string respondToAdd(std::string userhash, std::string httpresult, const cha
 	throw std::string(resultStream.str());
 }
 
-// Returns string on exit containg result, string containing a single newline on exit.
-std::string mainLoop(const char* userhash, const char* pass) {
-	// Create stringstream
-	std::stringstream resultStream("");
-	// Get password length
-	size_t pass_len = strlen(pass);
-	// Get command from user
-	std::string commandRaw;
-	std::getline(std::cin, commandRaw);
-	std::istringstream commandStream(commandRaw);
-	// Parse command
-	std::string command;
-	commandStream >> command;
-	if (command == "GET" || command == "get") { // If command is get
-		// Get Account Name
-		std::string accountName; commandStream >> accountName;
-		// Get URI of getpass.php
-		std::string postURI = serverURL;
-		postURI += "getpass.php";
-		// Get POST params
-		std::string toPost = generateFirstPost(userhash, accountName);
-		// Send HTTP request
-		std::string httpresult = httpRequest(postURI, toPost);
-		// Parse GET result
-		resultStream << parseGetResult(userhash, httpresult, pass, pass_len);
-	} else if (command == "ADD" || command == "add") { // If command is add
-		// Get account name and passLength
-		std::string accountName, passLength; commandStream >> accountName >> passLength;
-		// Get URI of addpass_challenge.php
-		std::string postURI = serverURL;
-		postURI += "addpass_challenge.php";
-		// Get POST params and send HTTP request, storing cookies
-		std::string toPost = generateFirstPost(userhash, accountName);
-		std::string httpresult = httpRequest(postURI, toPost, 1);
-		// Get URI of addpass_verify.php
-		postURI = serverURL;
-		postURI += "addpass_verify.php";
-		try {
-			// Get verification POST params and send HTTP request, sending cookies
-			std::string toPost = respondToAdd(userhash, httpresult, pass, pass_len, accountName, passLength);
-			resultStream << httpRequest(postURI, toPost, 2);
-		} catch (const std::string ex) { // If there is an error, resultStream it
-			resultStream << ex;
-		}
-	} else if (command == "QUIT" || command == "quit" || command == "EXIT" || command == "exit") {
-		// Do nothing
+// Wrapper for C#. Returns whether an exception was triggered.
+EXPORT bool parseGetResultWrapper(const char* userhash, const char* httpresult, const char* pass, char* outputBuffer, const size_t outputBuffer_len) {
+	bool exception_triggered = false;
+	std::string result;
+	// Run
+	try {
+		result = parseGetResult(std::string(userhash), std::string(httpresult), pass, strlen(pass));
+	} catch (std::string ex) {
+		result = ex;
+		exception_triggered = true;
+	}
+	// Copy over to buffer and return
+	if (result.size() < outputBuffer_len) {
+		strcpy(outputBuffer, result.c_str());
+	} else if (outputBuffer_len > 26) {
+		strcpy(outputBuffer, "Result too large to show\n");
 	} else {
-		resultStream << "Command not found.\n";
+		return true;
 	}
-	// Remove newlines from result, add a newline, and return
-	std::string resultRaw = resultStream.str();
-	char* resultChar = (char*)malloc(resultRaw.length()+2);
-	int x=0;
-	for (int i=0; i<resultRaw.length(); i++) {
-		if (resultRaw[i] != '\n') {
-			resultChar[x++] = resultRaw[i];
-		}
-	}
-	resultChar[x++] = '\n';
-	resultChar[x] = '\0';
-	std::string resultString(resultChar);
-	free(resultChar);
-	return resultString;
+	return exception_triggered;
 }
+
+// Wrapper for C#. Returns whether an exception was triggered.
+EXPORT bool respondToAddWrapper(const char* userhash, const char* httpresult, const char* pass, const char* accountName, const int passLength, char* outputBuffer, const size_t outputBuffer_len) {
+	bool exception_triggered = false;
+	std::string result;
+	// Run
+	try {
+		result = respondToAdd(std::string(userhash), std::string(httpresult), pass, strlen(pass), std::string(accountName), passLength);
+	} catch (std::string ex) {
+		result = ex;
+		exception_triggered = true;
+	}
+	// Copy over to buffer and return
+	if (result.size() < outputBuffer_len) {
+		strcpy(outputBuffer, result.c_str());
+	} else if (outputBuffer_len > 26) {
+		strcpy(outputBuffer, "Result too large to show\n");
+	} else {
+		return true;
+	}
+	return exception_triggered;
+}
+
+// Wrapper for C#. Returns whether an error occured.
+EXPORT bool md5hexWrapper(const char* plaintext, const size_t plaintext_len, char* outputBuffer, const size_t outputBuffer_len) {
+	// Check size
+	if (outputBuffer_len < 33) {
+		return true;
+	}
+	// Run
+	std::string result = md5hex(plaintext, plaintext_len);
+	strcpy(outputBuffer, result.c_str());
+	return false;
+}
+
+/*
+int main(int argc, char* argv[]) {
+	if (argc < 2) {
+		puts("Syntax Error"); return 254;
+	}
+	if (strcmp(argv[1], "parseGetResult") == 0) {
+		if (argc == 5) {
+			std::cout << parseGetResult(std::string(argv[2]), std::string(argv[3]), argv[4], strlen(argv[4]));
+		} else {
+			return 254;
+		}
+	} else if (strcmp(argv[1], "respondToAdd") == 0) {
+		if (argc == 7) {
+			std::cout << respondToAdd(std::string(argv[2]), std::string(argv[3]), argv[4], strlen(argv[4]), std::string(argv[5]), atoi(argv[6]));
+		} else {
+			return 254;
+		}
+	} else {
+		return 254;
+	}
+	return 0;
+}*/
