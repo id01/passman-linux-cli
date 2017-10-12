@@ -10,25 +10,18 @@
 #include <algorithm>
 
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
-#include "../cryptopp/md5.h"
-#include "../cryptopp/hex.h"
-#include "../cryptopp/base64.h"
-#include "../cryptopp/filters.h"
+#include <cryptopp/md5.h>
+#include <cryptopp/hex.h>
+#include <cryptopp/base64.h>
+#include <cryptopp/filters.h>
 
 #include "config.h"
 #include "doubledecryption.h"
 #include "doubleencryption.h"
 #include "signature.h"
 
-#define EXPORT __declspec(dllexport) __stdcall
-
 byte* eccprivkey = NULL;
 size_t eccprivkey_len = 0;
-
-// ASM-laced prototypes to get rid of mangling
-EXPORT bool parseGetResultWrapper(const char* userhash, const char* httpresult, const char* pass, char* outputBuffer, const size_t outputBuffer_len) asm ("parseGetResultWrapper");
-EXPORT bool respondToAddWrapper(const char* userhash, const char* httpresult, const char* pass, const char* accountName, const int passLength, char* outputBuffer, const size_t outputBuffer_len) asm ("respondToAddWrapper");
-EXPORT bool md5hexWrapper(const char* plaintext, const size_t plaintext_len, char* outputBuffer, const size_t outputBuffer_len) asm ("md5hexWrapper");
 
 // Gets an MD5 hash in std::string hex format
 std::string md5hex(const char* plaintext, size_t plaintext_len) {
@@ -48,7 +41,6 @@ std::string md5hex(const char* plaintext, size_t plaintext_len) {
 	return hash;
 }
 
-<<<<<<< HEAD
 // Parses GET result
 std::string parseGetResult(std::string userhash, std::string httpresult, const char* pass, const size_t pass_len) {
 	std::stringstream result;
@@ -169,23 +161,6 @@ std::string respondToAdd(std::string userhash, std::string httpresult, const cha
 	throw std::string(resultStream.str());
 }
 
-// Wrapper for C#. Returns whether an exception was triggered.
-EXPORT bool parseGetResultWrapper(const char* userhash, const char* httpresult, const char* pass, char* outputBuffer, const size_t outputBuffer_len) {
-	bool exception_triggered = false;
-	std::string result;
-	// Run
-	try {
-		result = parseGetResult(std::string(userhash), std::string(httpresult), pass, strlen(pass));
-	} catch (std::string ex) {
-		result = ex;
-		exception_triggered = true;
-	}
-	// Copy over to buffer and return
-	if (result.size() < outputBuffer_len) {
-		strcpy(outputBuffer, result.c_str());
-	} else if (outputBuffer_len > 26) {
-		strcpy(outputBuffer, "Result too large to show\n");
-=======
 // Returns string on exit containg result, string containing a single newline on exit.
 std::string mainLoop(const char* userhash, const char* pass) {
 	// Create stringstream
@@ -352,66 +327,6 @@ std::string mainLoop(const char* userhash, const char* pass) {
 		}
 	} else if (command == "QUIT" || command == "quit" || command == "EXIT" || command == "exit") {
 		// Do nothing
->>>>>>> parent of 1aa6ea5... 	modified:   .gitignore
-	} else {
-		return true;
 	}
-	return exception_triggered;
+	return resultStream.str();
 }
-
-// Wrapper for C#. Returns whether an exception was triggered.
-EXPORT bool respondToAddWrapper(const char* userhash, const char* httpresult, const char* pass, const char* accountName, const int passLength, char* outputBuffer, const size_t outputBuffer_len) {
-	bool exception_triggered = false;
-	std::string result;
-	// Run
-	try {
-		result = respondToAdd(std::string(userhash), std::string(httpresult), pass, strlen(pass), std::string(accountName), passLength);
-	} catch (std::string ex) {
-		result = ex;
-		exception_triggered = true;
-	}
-	// Copy over to buffer and return
-	if (result.size() < outputBuffer_len) {
-		strcpy(outputBuffer, result.c_str());
-	} else if (outputBuffer_len > 26) {
-		strcpy(outputBuffer, "Result too large to show\n");
-	} else {
-		return true;
-	}
-	return exception_triggered;
-}
-
-// Wrapper for C#. Returns whether an error occured.
-EXPORT bool md5hexWrapper(const char* plaintext, const size_t plaintext_len, char* outputBuffer, const size_t outputBuffer_len) {
-	// Check size
-	if (outputBuffer_len < 33) {
-		return true;
-	}
-	// Run
-	std::string result = md5hex(plaintext, plaintext_len);
-	strcpy(outputBuffer, result.c_str());
-	return false;
-}
-
-/*
-int main(int argc, char* argv[]) {
-	if (argc < 2) {
-		puts("Syntax Error"); return 254;
-	}
-	if (strcmp(argv[1], "parseGetResult") == 0) {
-		if (argc == 5) {
-			std::cout << parseGetResult(std::string(argv[2]), std::string(argv[3]), argv[4], strlen(argv[4]));
-		} else {
-			return 254;
-		}
-	} else if (strcmp(argv[1], "respondToAdd") == 0) {
-		if (argc == 7) {
-			std::cout << respondToAdd(std::string(argv[2]), std::string(argv[3]), argv[4], strlen(argv[4]), std::string(argv[5]), atoi(argv[6]));
-		} else {
-			return 254;
-		}
-	} else {
-		return 254;
-	}
-	return 0;
-}*/

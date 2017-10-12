@@ -1,16 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../cryptopp/sha.h"
-#include "../cryptopp/pwdbased.h"
-#include "../cryptopp/salsa.h"
-#include "../cryptopp/aes.h"
-#include "../cryptopp/modes.h"
-#include "../cryptopp/gcm.h"
-#include "../cryptopp/filters.h"
-#include "../cryptopp/osrng.h"
+#include <cryptopp/sha.h>
+#include <cryptopp/pwdbased.h>
+#include <cryptopp/salsa.h>
+#include <cryptopp/aes.h>
+#include <cryptopp/modes.h>
+#include <cryptopp/gcm.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/osrng.h>
 
-#include "../libscrypt/libscrypt.h"
+#include "../scrypt-jane/scrypt-jane.h"
 
 #define _UTIL_H
 
