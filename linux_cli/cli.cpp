@@ -5,8 +5,8 @@
 #include <iostream>
 #include <string>
 
-#include "main/config.h"
-#include "main/main.h"
+#include "../main/config.h"
+#include "../main/main.h"
 
 int main() {
 	srand(clock()*(time(NULL)%1000));

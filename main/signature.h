@@ -3,14 +3,14 @@
 #include <string>
 #include <iostream>
 
-#include "../cryptopp/eccrypto.h"
-#include "../cryptopp/asn.h"
-#include "../cryptopp/oids.h"
-#include "../cryptopp/osrng.h"
-#include "../cryptopp/ecp.h"
-#include "../cryptopp/filters.h"
-#include "../cryptopp/sha.h"
-#include "../cryptopp/hex.h"
+#include <cryptopp/eccrypto.h>
+#include <cryptopp/asn.h>
+#include <cryptopp/oids.h>
+#include <cryptopp/osrng.h>
+#include <cryptopp/ecp.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/sha.h>
+#include <cryptopp/hex.h>
 
 std::string create_signature(const std::string plaintext, const byte* privkey, const size_t privkey_len) {
 	// Create objects
