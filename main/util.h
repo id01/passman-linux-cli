@@ -39,7 +39,7 @@ void sha256(const byte* buffer, size_t buffer_len, byte* output) {
 
 // Derives a key. Out buffer should be 64 bytes. Salt should be 16 bytes.
 void keydev(const byte* password, size_t password_len, const byte* salt, byte* outbuf) {
-	scrypt(password, password_len, salt, 16, 13, 3, 0, outbuf, 64); // 13,3,0 are in powers of 2, with N being in N+1 to power of 2.
+	scrypt(password, password_len, salt, 16, 13, 3, 0, outbuf, 64); // 13,3,0 are in powers of 2, with N being in N+1 to power of 2. 
 }
 
 // Randomizes byte array
