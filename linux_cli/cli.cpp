@@ -15,7 +15,7 @@ int main() {
 	char* passRaw = getpass("Password: "); size_t pass_len = strlen(passRaw);
 	char* pass = (char*)malloc(pass_len); strcpy(pass, passRaw); wipeNoFree((byte*)passRaw, pass_len);
 	// Get user hash and wipe user
-	std::string userhash = md5hex(user, user_len);
+	std::string userhash = hashuserhex(user, user_len);
 	wipe((byte*)user, user_len); user = NULL;
 	// Run Main Loop
 	std::string resultString;

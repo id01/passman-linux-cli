@@ -8,7 +8,7 @@ size_t httpWriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 	return realsize;
 }
 
-std::string httpRequest(std::string url, std::string toPost, int mode=0) {
+std::string httpRequest(std::string url, std::string toPost, const char* referer, int mode=0) {
 	CURL *curl;
 	CURLcode res;
 	std::string readBuffer;
@@ -17,6 +17,7 @@ std::string httpRequest(std::string url, std::string toPost, int mode=0) {
 	if (curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, toPost.c_str());
+		curl_easy_setopt(curl, CURLOPT_REFERER, referer);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, httpWriteCallback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 		switch (mode) {

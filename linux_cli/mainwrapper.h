@@ -37,7 +37,7 @@ std::string mainLoop(const char* userhash, const char* pass) {
 		// Get POST params
 		std::string toPost = generateFirstPost(userhash, accountName);
 		// Send HTTP request
-		std::string httpresult = httpRequest(postURI, toPost);
+		std::string httpresult = httpRequest(postURI, toPost, "getpass.html");
 		// Parse GET result
 		resultStream << parseGetResult(userhash, httpresult, pass, pass_len);
 	} else if (command == "ADD" || command == "add") { // If command is add
@@ -48,7 +48,7 @@ std::string mainLoop(const char* userhash, const char* pass) {
 		postURI += "addpass_challenge.php";
 		// Get POST params and send HTTP request, storing cookies
 		std::string toPost = generateFirstPost(userhash, accountName);
-		std::string httpresult = httpRequest(postURI, toPost, 1);
+		std::string httpresult = httpRequest(postURI, toPost, "addpass.html", 1);
 		// Get URI of addpass_verify.php
 		postURI = serverURL;
 		postURI += "addpass_verify.php";
@@ -59,7 +59,7 @@ std::string mainLoop(const char* userhash, const char* pass) {
 			std::stringstream toPostStream;
 			toPostStream << "userhash=" << userhash << "&passwordcrypt=" << addResult.substr(0, addResult.find('$'))
 				<< "&signature=" << addResult.substr(addResult.find('$'));
-			resultStream << httpRequest(postURI, toPostStream.str(), 2);
+			resultStream << httpRequest(postURI, toPostStream.str(), "addpass.html", 2);
 		} catch (const std::string ex) { // If there is an error, resultStream it
 			resultStream << ex;
 		}

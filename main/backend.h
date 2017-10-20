@@ -9,8 +9,6 @@
 #include <sstream>
 #include <algorithm>
 
-#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
-#include <cryptopp/md5.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/base64.h>
 #include <cryptopp/filters.h>
@@ -19,25 +17,47 @@
 #include "doubleencryption.h"
 #include "signature.h"
 
+extern "C" {
+#include "../scrypt-jane/scrypt-jane.h"
+}
+
 byte* eccprivkey = NULL;
 size_t eccprivkey_len = 0;
 
-// Gets an MD5 hash in std::string hex format
-std::string md5hex(const char* plaintext, size_t plaintext_len) {
+// Gets a hash in std::string hex format for user
+std::string hashuserhex(const char* user, size_t user_len) {
 	// Get hash
-	byte digest[ CryptoPP::Weak::MD5::DIGESTSIZE ];
-	CryptoPP::Weak::MD5 hasher;
-	hasher.CalculateDigest( digest, (const byte*)plaintext, plaintext_len );
-	// Encode it in hex
-	CryptoPP::HexEncoder encoder;
-	std::string hash;
-	encoder.Attach( new CryptoPP::StringSink( hash ) );
-	encoder.Put( digest, sizeof(digest) );
-	encoder.MessageEnd();
-	// Change it to lower case
-	std::transform(hash.begin(), hash.end(), hash.begin(), ::tolower);
+	byte digest[8];
+	scrypt((const byte*)user, user_len, (const byte*)"", 0, 7, 2, 0, digest, 8); // 8 bytes is 64 bits
+	// Encode in hex and null terminate
+	char hexdigest[17];
+	for (int i=0; i<8; i++) {
+		sprintf(&hexdigest[i*2], "%.2x", digest[i]);
+	}
+	hexdigest[16] = 0;
+	std::string result(hexdigest);
+	// Cleanup
+	wipeNoFree((byte*)digest, 8); wipeNoFree((byte*)hexdigest, 16);
 	// Return
-	return hash;
+	return result;
+}
+
+// Gets a hash in std::string hex format for account, using userhash (in hex) as salt
+std::string hashaccounthex(const char* account, size_t account_len, const char* userhash, size_t userhash_len) {
+	// Get hash
+	byte digest[4];
+	scrypt((const byte*)account, account_len, (const byte*)userhash, userhash_len, 11, 3, 0, digest, 4); // 4 bytes is 32 bits
+	// Encode in hex and null terminate
+	char hexdigest[9];
+	for (int i=0; i<4; i++) {
+		sprintf(&hexdigest[i*2], "%.2x", digest[i]);
+	}
+	hexdigest[8] = 0;
+	std::string result(hexdigest);
+	// Cleanup
+	wipeNoFree((byte*)digest, 4); wipeNoFree((byte*)hexdigest, 8);
+	// Return
+	return result;
 }
 
 // Parses GET result
@@ -76,7 +96,7 @@ std::string parseGetResult(std::string userhash, std::string httpresult, const c
 
 // Responds to ADD result
 std::string respondToAdd(std::string userhash, std::string httpresult, const char* pass, const size_t pass_len, std::string accountName, int passLength) {
-	std::string accountHash = md5hex(accountName.c_str(), accountName.size());
+	std::string accountHash = hashaccounthex(accountName.c_str(), accountName.size(), userhash.c_str(), userhash.size());
 	// Allocate variables
 	std::string challenge, eccprivkeyraw, status, eccprivkeyb64, eccprivkeyenc;
 	std::stringstream resultStream;
