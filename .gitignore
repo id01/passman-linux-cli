@@ -1,3 +1,4 @@
 scrypt-jane/*
 *.o
 linux_cli/cli
+linux_cli/config.h
