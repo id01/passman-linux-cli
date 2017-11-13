@@ -17,6 +17,7 @@ void escapePluses(std::string* toEscape) {
 
 // Returns string on exit containg result, string containing a single newline on exit.
 std::string mainLoop(const char* userhash, const char* pass) {
+	bool quitting = false; // Not quitting yet
 	// Create stringstream
 	std::stringstream resultStream("");
 	// Get password length
@@ -64,7 +65,7 @@ std::string mainLoop(const char* userhash, const char* pass) {
 			resultStream << ex;
 		}
 	} else if (command == "QUIT" || command == "quit" || command == "EXIT" || command == "exit") {
-		// Do nothing
+		quitting = true;
 	} else {
 		resultStream << "Command not found.\n";
 	}
@@ -80,6 +81,9 @@ std::string mainLoop(const char* userhash, const char* pass) {
 	resultChar[x++] = '\n';
 	resultChar[x] = '\0';
 	std::string resultString(resultChar);
+	if (!(resultChar[1] || quitting)) {
+		resultString = "Error. Possibly connectivity issue.\n";
+	}
 	free(resultChar);
 	return resultString;
 }
