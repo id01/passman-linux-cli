@@ -43,6 +43,8 @@ std::string mainLoop(const char* userhash, const char* pass) {
 	} else if (command == "ADD" || command == "add") { // If command is add
 		// Get account name and passLength
 		std::string accountName, passLength; commandStream >> accountName >> passLength;
+		// Hash account name
+		std::string accounthash = hashaccounthex(accountName.c_str(), accountName.length(), userhash, (size_t)strlen(userhash));
 		// Get URI of addpass_challenge.php
 		std::string postURI = serverURL;
 		postURI += "addpass_challenge.php";
@@ -53,12 +55,18 @@ std::string mainLoop(const char* userhash, const char* pass) {
 		postURI = serverURL;
 		postURI += "addpass_verify.php";
 		try {
-			// Get verification POST params and send HTTP request, sending cookies
-			std::string addResult = respondToAdd(userhash, httpresult, pass, pass_len, accountName, atoi(passLength.c_str()));
+			// Get verification POST params, escaping pluses
+			std::string addResult = respondToAdd(userhash, accounthash, httpresult, pass, pass_len, accountName, atoi(passLength.c_str()));
 			escapePluses(&addResult);
+			// Parse addResult
+			std::istringstream parseStream(addResult);
+			std::string challenge, passwordcrypt, signature;
+			parseStream >> challenge >> passwordcrypt >> signature;
+			// Combine and post
 			std::stringstream toPostStream;
-			toPostStream << "userhash=" << userhash << "&passwordcrypt=" << addResult.substr(0, addResult.find('$'))
-				<< "&signature=" << addResult.substr(addResult.find('$'));
+			toPostStream << "userhash=" << userhash << "&account=" << accounthash
+				<< "&challenge=" << challenge << "&passwordcrypt=" << passwordcrypt
+				<< "&signature=" << signature;
 			resultStream << httpRequest(postURI, toPostStream.str(), "addpass.html", 2);
 		} catch (const std::string ex) { // If there is an error, resultStream it
 			resultStream << ex;

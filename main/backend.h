@@ -94,23 +94,26 @@ std::string parseGetResult(std::string userhash, std::string httpresult, const c
 	}
 }
 
-// Responds to ADD result
-std::string respondToAdd(std::string userhash, std::string httpresult, const char* pass, const size_t pass_len, std::string accountName, int passLength) {
-	std::string accountHash = hashaccounthex(accountName.c_str(), accountName.size(), userhash.c_str(), userhash.size());
+// Responds to ADD result. Returns a string in the format "challenge encryptedpassb64 signatureb64"
+std::string respondToAdd(std::string userhash, std::string accounthash, std::string httpresult, const char* pass, const size_t pass_len, std::string account, const int passLength) {
+	// Generate accounthash
+	//std::string accounthash = hashaccounthex(account.c_str(), account.length(), userhash.c_str(), userhash.length());
 	// Allocate variables
-	std::string challenge, eccprivkeyraw, status, eccprivkeyb64, eccprivkeyenc;
+	std::string challenge, eccstatus, eccprivkeyb64, eccprivkeyenc, hmacstatus, suppliedhmac, remainder;
 	std::stringstream resultStream;
-	// Parse HTTP result
-	if (httpresult.find('\n') != -1) {
-		challenge = httpresult.substr(0, httpresult.find('\n'));
-		eccprivkeyraw = httpresult.substr(httpresult.find('\n'));
-		std::istringstream eccprivkeystream(eccprivkeyraw);
-		eccprivkeystream >> status >> eccprivkeyb64;
-	} else {
-		eccprivkeyraw = httpresult;
-		status = "NOPE";
-	}
-	if (status == "VALID") { // If no error
+	// Parse HTTP result (part 1)
+	std::istringstream parserstream(httpresult);
+	parserstream >> challenge >> eccstatus >> eccprivkeyb64 >> hmacstatus >> suppliedhmac;
+	// Check for errors (part 1)
+	if (parserstream.rdbuf()->in_avail() == 0) { // There seems to be nothing left in parserstream. Looks like an error.
+		resultStream << httpresult << '\n'; // Everything is wrong
+	} else if (eccstatus != "VALID") { // Invalid ECC private key
+		std::getline(parserstream, remainder);
+		resultStream << eccstatus << ' ' << eccprivkeyb64 << ' ' << hmacstatus << ' ' << suppliedhmac << remainder << '\n';
+	} else if (hmacstatus != "VALID") { // Invalid supplied HMAC
+		std::getline(parserstream, remainder);
+		resultStream << hmacstatus << ' ' << suppliedhmac << remainder << '\n';
+	} else { // There is no error
 		if (eccprivkey == NULL || eccprivkey_len == 0) { // Decrypt private key. We haven't done so yet.
 			// Decode key
 			CryptoPP::StringSource(eccprivkeyb64, true,
@@ -127,23 +130,22 @@ std::string respondToAdd(std::string userhash, std::string httpresult, const cha
 			}
 		}
 		// Generate a password of length passLength
-		int newPassword_len = passLength;
-		if (newPassword_len <= 8) {
+		if (passLength <= 8) {
 			throw std::string("Password length must be at least 8\n");
 		}
 		const char* possiblechars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.!";
-		byte* newPasswordBytes = (byte*)malloc(newPassword_len);
-		urandom(newPasswordBytes, newPassword_len);
-		char* newPassword = (char*)malloc(newPassword_len);
-		for (int i=0; i<newPassword_len; i++) {
+		byte* newPasswordBytes = (byte*)malloc(passLength);
+		urandom(newPasswordBytes, passLength);
+		char* newPassword = (char*)malloc(passLength);
+		for (int i=0; i<passLength; i++) {
 			newPassword[i] = possiblechars[newPasswordBytes[i] >> 2];
 		}
 		// Encrypt newPassword
-		byte* encryptedPassword = (byte*)malloc(newPassword_len+48);
-		if (doubleencrypt((const byte*)newPassword, newPassword_len, (const byte*)pass, pass_len, encryptedPassword)) { // If encryption succeeded
+		byte* encryptedPassword = (byte*)malloc(passLength+48);
+		if (doubleencrypt((const byte*)newPassword, passLength, (const byte*)pass, pass_len, encryptedPassword)) { // If encryption succeeded
 			// Encode encryptedPassword in base64 and remove newlines
 			std::string encryptedPasswordB64;
-			CryptoPP::ArraySource(encryptedPassword, newPassword_len+48, true, 
+			CryptoPP::ArraySource(encryptedPassword, passLength+48, true, 
 				new CryptoPP::Base64Encoder(
 					new CryptoPP::StringSink(encryptedPasswordB64)
 				)
@@ -154,7 +156,7 @@ std::string respondToAdd(std::string userhash, std::string httpresult, const cha
 			}
 			// Sign and encode b64
 			std::stringstream toSign("");
-			toSign << challenge << '$' << accountHash << '$' << encryptedPasswordB64;
+			toSign << suppliedhmac << '$' << userhash << '$' << accounthash << '$' << encryptedPasswordB64;
 			std::string signature = create_signature(toSign.str(), eccprivkey, eccprivkey_len), signatureB64;
 			CryptoPP::StringSource(signature, true,
 				new CryptoPP::Base64Encoder(
@@ -162,20 +164,19 @@ std::string respondToAdd(std::string userhash, std::string httpresult, const cha
 				)
 			);
 			// Generate result
-			std::string result(encryptedPasswordB64); result += '$'; result += signatureB64;
+			resultStream << challenge << ' ' << encryptedPasswordB64 << ' ' << signatureB64;
+			std::string result = resultStream.str();
 			// Remove '\n'
 			pos = 0;
 			while ((pos = result.find('\n', pos)) != std::string::npos) {
 				result.replace(pos, 1, "");
 			}
 			// Cleanup and return
-			wipe((byte*)newPassword, newPassword_len); wipe(newPasswordBytes, newPassword_len); free(encryptedPassword);
+			wipe((byte*)newPassword, passLength); wipe(newPasswordBytes, passLength); free(encryptedPassword);
 			return result;
 		} else {
 			resultStream << "Encryption error.\n";
 		}
-	} else {
-		resultStream << eccprivkeyraw << '\n';
 	}
 	throw std::string(resultStream.str());
 }
