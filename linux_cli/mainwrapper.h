@@ -2,7 +2,7 @@
 #include <sstream>
 #include <string.h>
 
-#include "../main/main.h"
+#include "../main/linux.h"
 #include "requester.h"
 #include "config.h"
 
@@ -57,7 +57,7 @@ std::string mainLoop(const char* userhash, const char* pass) {
 		postURI += "addpass_verify.php";
 		try {
 			// Get verification POST params, escaping pluses
-			std::string addResult = respondToAdd(userhash, accounthash, httpresult, pass, pass_len, accountName, atoi(passLength.c_str()));
+			std::string addResult = respondToAdd(userhash, accounthash, httpresult, pass, pass_len, atoi(passLength.c_str()));
 			escapePluses(&addResult);
 			// Parse addResult
 			std::istringstream parseStream(addResult);

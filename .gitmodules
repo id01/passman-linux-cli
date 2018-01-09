@@ -1,0 +1,3 @@
+[submodule "windows_gui"]
+	path = windows_gui
+	url = https://github.com/id01/passman-windows-gui-wrapper

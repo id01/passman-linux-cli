@@ -1,4 +1,6 @@
+cryptopp/*
 scrypt-jane/*
 *.o
+main/windows.dll
 linux_cli/cli
 linux_cli/config.h

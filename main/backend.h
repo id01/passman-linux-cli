@@ -95,9 +95,7 @@ std::string parseGetResult(std::string userhash, std::string httpresult, const c
 }
 
 // Responds to ADD result. Returns a string in the format "challenge encryptedpassb64 signatureb64"
-std::string respondToAdd(std::string userhash, std::string accounthash, std::string httpresult, const char* pass, const size_t pass_len, std::string account, const int passLength) {
-	// Generate accounthash
-	//std::string accounthash = hashaccounthex(account.c_str(), account.length(), userhash.c_str(), userhash.length());
+std::string respondToAdd(std::string userhash, std::string accounthash, std::string httpresult, const char* pass, const size_t pass_len, const int passLength) {
 	// Allocate variables
 	std::string challenge, eccstatus, eccprivkeyb64, eccprivkeyenc, hmacstatus, suppliedhmac, remainder;
 	std::stringstream resultStream;
