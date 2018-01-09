@@ -1,3 +1,5 @@
+cryptopp
+scrypt-jane
 cryptopp/*
 scrypt-jane/*
 *.o
