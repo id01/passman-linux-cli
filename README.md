@@ -1,6 +1,6 @@
 ## Password Manager
 C++ Windows GUI/Linux Command Line Interface Submodule  
-Latest Version: 1.0.1
+Latest Version: 1.0.2
 
 ## Description
 This is a (no longer so) simple password manager that runs on SQLAlchemy.  
